@@ -382,20 +382,19 @@ pub trait Tokens: Sized {
     /// use yap::{ Tokens, IntoTokens };
     ///
     /// let mut s = "abc".into_tokens();
-    /// assert_eq!(s.token(&'a'), true);
-    /// assert_eq!(s.token(&'b'), true);
+    /// assert_eq!(s.token('a'), true);
+    /// assert_eq!(s.token('b'), true);
     /// assert_eq!(s.token('z'), false);
     /// assert_eq!(s.token('y'), false);
     /// assert_eq!(s.token('c'), true);
     /// ```
     fn token<I>(&mut self, t: I) -> bool
     where
-        Self::Item: PartialEq,
-        I: Borrow<Self::Item>,
+        I: PartialEq<Self::Item>,
     {
         let location = self.location();
         match self.next() {
-            Some(item) if &item == t.borrow() => true,
+            Some(item) if t.eq(&item) => true,
             _ => {
                 self.set_location(location);
                 false
@@ -422,9 +421,8 @@ pub trait Tokens: Sized {
     /// ```
     fn tokens<It>(&mut self, ts: It) -> bool
     where
-        Self::Item: PartialEq,
         It: IntoIterator,
-        It::Item: Borrow<Self::Item>,
+        It::Item: PartialEq<Self::Item>,
     {
         let location = self.location();
 
@@ -436,7 +434,7 @@ pub trait Tokens: Sized {
             match self.next() {
                 Some(actual) => {
                     // We have a token; does it equal the expected one?
-                    if &actual != expected.borrow() {
+                    if !expected.eq(&actual) {
                         self.set_location(location);
                         return false;
                     }
