@@ -18,6 +18,7 @@ use core::borrow::Borrow;
 use core::ops::Deref;
 use core::str::FromStr;
 
+use either::Either;
 // Re-export the structs handed back from token fns:
 pub use many::Many;
 pub use many_err::ManyErr;
@@ -398,6 +399,37 @@ pub trait Tokens: Sized {
             _ => {
                 self.set_location(location);
                 false
+            }
+        }
+    }
+
+    /// Expect a specific token to be next. If there's a match, Left will be returned with the
+    /// expected token. If the token is not found, Right will be returned and the iterator is not
+    /// advanced.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use yap::{ Tokens, IntoTokens };
+    /// use either::*;
+    ///
+    /// let mut s = "abc".into_tokens();
+    /// assert_eq!(s.either('a'), Left('a'));
+    /// assert_eq!(s.either('b'), Left('b'));
+    /// assert_eq!(s.either('z'), Right(Some('c')));
+    /// assert_eq!(s.either('y'), Right(Some('c')));
+    /// assert_eq!(s.either('c'), Left('c'));
+    /// ```
+    fn either<I>(&mut self, t: I) -> Either<Self::Item, Option<Self::Item>>
+    where
+        I: PartialEq<Self::Item>,
+    {
+        let location = self.location();
+        match self.next() {
+            Some(item) if t.eq(&item) => Either::Left(item),
+            t => {
+                self.set_location(location);
+                Either::Right(t)
             }
         }
     }

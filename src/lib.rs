@@ -115,4 +115,5 @@ pub mod one_of;
 
 pub mod chars;
 pub mod types;
+pub use either;
 pub use tokens::{IntoTokens, TokenLocation, Tokens};
