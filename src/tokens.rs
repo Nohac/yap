@@ -14,15 +14,15 @@ mod slice;
 mod take;
 mod take_while;
 
-use core::borrow::Borrow;
 use core::ops::Deref;
 use core::str::FromStr;
+use core::{borrow::Borrow, ops::ControlFlow};
 
 use either::Either;
 // Re-export the structs handed back from token fns:
 pub use many::Many;
 pub use many_err::ManyErr;
-pub use sep_by::SepBy;
+pub use sep_by::SepByCtrl;
 pub use sep_by_all::SepByAll;
 pub use sep_by_all_err::SepByAllErr;
 pub use sep_by_err::SepByErr;
@@ -31,6 +31,8 @@ pub use take::Take;
 pub use take_while::TakeWhile;
 
 use crate::types::{WithContext, WithContextMut};
+
+use self::sep_by::SepBy;
 
 /// The tokens trait is an extension of the [`Iterator`] trait, and adds a bunch of useful methods
 /// for parsing tokens from the underlying iterable type.
@@ -759,6 +761,33 @@ pub trait Tokens: Sized {
         S: FnMut(&mut Self) -> bool,
     {
         SepBy::new(self, parser, separator)
+    }
+
+    /// Return a [`Tokens`] impl that parses anything matching the first `parser` function,
+    /// and expects to parse something matching the second `separator` function between each
+    /// of these.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use yap::{ Tokens, IntoTokens };
+    ///
+    /// fn parse_digit(tokens: &mut impl Tokens<Item=char>) -> Option<u32> {
+    ///     let c = tokens.next()?;
+    ///     c.to_digit(10)
+    /// }
+    ///
+    /// let mut s = "1,2,3,4,abc".into_tokens();
+    /// let digits: Vec<u32> = s.sep_by(|t| parse_digit(t), |t| t.token(',')).collect();
+    /// assert_eq!(digits, vec![1,2,3,4]);
+    /// assert_eq!(s.remaining(), ",abc");
+    /// ```
+    fn sep_by_ctrl<F, S, Output>(&'_ mut self, parser: F, separator: S) -> SepByCtrl<'_, Self, F, S>
+    where
+        F: FnMut(&mut Self) -> ControlFlow<(), Option<Output>>,
+        S: FnMut(&mut Self) -> bool,
+    {
+        SepByCtrl::new(self, parser, separator)
     }
 
     /// Return a [`Tokens`] impl that parses anything matching the `parser` function, and expects
