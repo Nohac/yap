@@ -281,7 +281,10 @@ impl<I> TokenLocation for IterTokensLocation<I> {
     }
 }
 
-impl<I> IterTokens<I> {
+impl<I> IterTokens<I>
+where
+    I: Iterator + Clone,
+{
     /// We can't define a blanket impl for [`IntoTokens`] on all `impl Iterator + Clone` without
     /// [specialization](https://rust-lang.github.io/rfcs/1210-impl-specialization.html).
     ///
